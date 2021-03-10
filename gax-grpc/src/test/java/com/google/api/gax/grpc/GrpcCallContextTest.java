@@ -354,6 +354,55 @@ public class GrpcCallContextTest {
     assertNotNull(context.getRetryableCodes());
   }
 
+  @Test
+  public void testWithOverallTimeout() {
+    Truth.assertThat(GrpcCallContext.createDefault().withOverallTimeout(null).getOverallTimeout())
+        .isNull();
+  }
+
+  @Test
+  public void testWithNegativeOverallTimeout() {
+    Truth.assertThat(
+            GrpcCallContext.createDefault()
+                .withOverallTimeout(Duration.ofSeconds(-1L))
+                .getOverallTimeout())
+        .isNull();
+  }
+
+  @Test
+  public void testWithZeroOverallTimeout() {
+    Truth.assertThat(
+            GrpcCallContext.createDefault()
+                .withOverallTimeout(Duration.ofSeconds(0L))
+                .getOverallTimeout())
+        .isNull();
+  }
+
+  @Test
+  public void testWithLongerOverallTimeout() {
+    GrpcCallContext ctxWithShortOverallTimeout =
+        GrpcCallContext.createDefault().withOverallTimeout(Duration.ofSeconds(5));
+
+    // Sanity check
+    Truth.assertThat(ctxWithShortOverallTimeout.getOverallTimeout())
+        .isEqualTo(Duration.ofSeconds(5));
+
+    // Try to extend the timeout and verify that it was extended
+    GrpcCallContext ctxWithExtendedOverallTimeout =
+        ctxWithShortOverallTimeout.withOverallTimeout(Duration.ofSeconds(10));
+    Truth.assertThat(ctxWithExtendedOverallTimeout.getOverallTimeout())
+        .isEqualTo(Duration.ofSeconds(10));
+  }
+
+  @Test
+  public void testMergeWithOverallTimeout() {
+    Duration overallTimeout = Duration.ofSeconds(19);
+    GrpcCallContext ctx1 = GrpcCallContext.createDefault();
+    GrpcCallContext ctx2 = GrpcCallContext.createDefault().withOverallTimeout(overallTimeout);
+
+    Truth.assertThat(ctx1.merge(ctx2).getOverallTimeout()).isEqualTo(overallTimeout);
+  }
+
   private static Map<String, List<String>> createTestExtraHeaders(String... keyValues) {
     Map<String, List<String>> extraHeaders = new HashMap<>();
     for (int i = 0; i < keyValues.length; i += 2) {

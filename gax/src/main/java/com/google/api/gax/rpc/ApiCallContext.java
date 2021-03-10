@@ -77,6 +77,21 @@ public interface ApiCallContext extends RetryingContext {
   Duration getTimeout();
 
   /**
+   * Returns a new ApiCallContext with the given overall timeout set.
+   *
+   * <p>This sets the maximum amount of time the entire call can take. Unlike a deadline, the
+   * overall timeout is relative duration that is measured from the beginning of the call. If
+   * retries are enabled, RPC attempts will respect the overall timeout and not surpass it. This can
+   * be used instead of {@link #withTimeout(Duration)} to limit the duration of a server streaming
+   * RPC as well.
+   */
+  ApiCallContext withOverallTimeout(@Nullable Duration timeout);
+
+  /** Returns the configured overall timeout. */
+  @Nullable
+  Duration getOverallTimeout();
+
+  /**
    * Returns a new ApiCallContext with the given stream timeout set.
    *
    * <p>This timeout only applies to a {@link ServerStreamingCallable}s. It limits the maximum

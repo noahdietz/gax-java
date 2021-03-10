@@ -37,6 +37,7 @@ import com.google.api.gax.tracing.ApiTracer;
 import com.google.api.gax.tracing.NoopApiTracer;
 import java.util.Set;
 import javax.annotation.Nonnull;
+import org.threeten.bp.Duration;
 
 /**
  * Backwards compatibility class to aid in transition to adding operation state to {@link
@@ -61,6 +62,11 @@ class NoopRetryingContext implements RetryingContext {
 
   @Override
   public Set<Code> getRetryableCodes() {
+    return null;
+  }
+
+  @Override
+  public Duration getOverallTimeout() {
     return null;
   }
 }

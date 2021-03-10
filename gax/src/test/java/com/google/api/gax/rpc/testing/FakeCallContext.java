@@ -54,6 +54,7 @@ public class FakeCallContext implements ApiCallContext {
   private final Credentials credentials;
   private final FakeChannel channel;
   private final Duration timeout;
+  private final Duration overallTimeout;
   private final Duration streamWaitTimeout;
   private final Duration streamIdleTimeout;
   private final ImmutableMap<String, List<String>> extraHeaders;
@@ -70,7 +71,8 @@ public class FakeCallContext implements ApiCallContext {
       ImmutableMap<String, List<String>> extraHeaders,
       ApiTracer tracer,
       RetrySettings retrySettings,
-      Set<StatusCode.Code> retryableCodes) {
+      Set<StatusCode.Code> retryableCodes,
+      Duration overallTimeout) {
     this.credentials = credentials;
     this.channel = channel;
     this.timeout = timeout;
@@ -80,11 +82,21 @@ public class FakeCallContext implements ApiCallContext {
     this.tracer = tracer;
     this.retrySettings = retrySettings;
     this.retryableCodes = retryableCodes == null ? null : ImmutableSet.copyOf(retryableCodes);
+    this.overallTimeout = overallTimeout;
   }
 
   public static FakeCallContext createDefault() {
     return new FakeCallContext(
-        null, null, null, null, null, ImmutableMap.<String, List<String>>of(), null, null, null);
+        null,
+        null,
+        null,
+        null,
+        null,
+        ImmutableMap.<String, List<String>>of(),
+        null,
+        null,
+        null,
+        null);
   }
 
   @Override
@@ -155,6 +167,11 @@ public class FakeCallContext implements ApiCallContext {
       newRetryableCodes = this.retryableCodes;
     }
 
+    Duration newOverallTimeout = fakeCallContext.overallTimeout;
+    if (newOverallTimeout == null) {
+      newOverallTimeout = this.overallTimeout;
+    }
+
     ImmutableMap<String, List<String>> newExtraHeaders =
         Headers.mergeHeaders(extraHeaders, fakeCallContext.extraHeaders);
     return new FakeCallContext(
@@ -166,7 +183,8 @@ public class FakeCallContext implements ApiCallContext {
         newExtraHeaders,
         newTracer,
         newRetrySettings,
-        newRetryableCodes);
+        newRetryableCodes,
+        newOverallTimeout);
   }
 
   public RetrySettings getRetrySettings() {
@@ -183,7 +201,8 @@ public class FakeCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   public Set<StatusCode.Code> getRetryableCodes() {
@@ -200,7 +219,34 @@ public class FakeCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        retryableCodes);
+        retryableCodes,
+        this.overallTimeout);
+  }
+
+  @Override
+  public FakeCallContext withOverallTimeout(@Nullable Duration overallTimeout) {
+    // Default RetrySettings use 0 for RPC timeout. Treat that as a disabled timeout.
+    if (overallTimeout != null && (overallTimeout.isZero() || overallTimeout.isNegative())) {
+      overallTimeout = null;
+    }
+
+    return new FakeCallContext(
+        this.credentials,
+        this.channel,
+        this.timeout,
+        this.streamWaitTimeout,
+        this.streamIdleTimeout,
+        this.extraHeaders,
+        this.tracer,
+        this.retrySettings,
+        this.retryableCodes,
+        overallTimeout);
+  }
+
+  @Nullable
+  @Override
+  public Duration getOverallTimeout() {
+    return overallTimeout;
   }
 
   public Credentials getCredentials() {
@@ -239,7 +285,8 @@ public class FakeCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Override
@@ -263,7 +310,8 @@ public class FakeCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Override
@@ -287,7 +335,8 @@ public class FakeCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Override
@@ -301,7 +350,8 @@ public class FakeCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Override
@@ -316,7 +366,8 @@ public class FakeCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Override
@@ -333,7 +384,8 @@ public class FakeCallContext implements ApiCallContext {
         newExtraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Override
@@ -365,7 +417,8 @@ public class FakeCallContext implements ApiCallContext {
         this.extraHeaders,
         tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   public static FakeCallContext create(ClientContext clientContext) {

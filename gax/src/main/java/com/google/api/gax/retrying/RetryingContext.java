@@ -35,6 +35,7 @@ import com.google.api.gax.tracing.ApiTracer;
 import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import org.threeten.bp.Duration;
 
 /**
  * Context for a retryable operation.
@@ -60,4 +61,11 @@ public interface RetryingContext {
    */
   @Nullable
   Set<StatusCode.Code> getRetryableCodes();
+
+  /**
+   * Returns the overall timeout to use with this context, or <code>null</code> if the {@link
+   * RetrySettings} timeouts should be used.
+   */
+  @Nullable
+  Duration getOverallTimeout();
 }

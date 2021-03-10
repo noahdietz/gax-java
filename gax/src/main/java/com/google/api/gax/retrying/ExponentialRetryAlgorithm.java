@@ -87,15 +87,33 @@ public class ExponentialRetryAlgorithm implements TimedRetryAlgorithmWithContext
    */
   @Override
   public TimedAttemptSettings createFirstAttempt(RetryingContext context) {
-    if (context.getRetrySettings() == null) {
+    if (context.getRetrySettings() == null && context.getOverallTimeout() == null) {
       return createFirstAttempt();
     }
 
-    RetrySettings retrySettings = context.getRetrySettings();
+    // If set in the context, use the given retrySettings rather than the settings this was created
+    // with.
+    // Attempts created using the TimedAttemptSettings built here will use these
+    // retrySettings, but a new call will not (unless overridden again).
+    RetrySettings retrySettings =
+        context.getRetrySettings() != null ? context.getRetrySettings() : globalSettings;
+
+    // Overwrite the timeout settings with the overall timeout and disable timeout multiplication.
+    // This is a logical timeout.
+    // Subsequent RPC attempts use the time remaining in the overall timeout.
+    if (context.getOverallTimeout() != null) {
+      Duration overallTimeout = context.getOverallTimeout();
+      retrySettings =
+          retrySettings
+              .toBuilder()
+              .setInitialRpcTimeout(overallTimeout)
+              .setMaxRpcTimeout(overallTimeout)
+              .setTotalTimeout(overallTimeout)
+              .setRpcTimeoutMultiplier(1.0)
+              .build();
+    }
+
     return TimedAttemptSettings.newBuilder()
-        // Use the given retrySettings rather than the settings this was created with.
-        // Attempts created using the TimedAttemptSettings built here will use these
-        // retrySettings, but a new call will not (unless overridden again).
         .setGlobalSettings(retrySettings)
         .setRpcTimeout(retrySettings.getInitialRpcTimeout())
         .setRetryDelay(Duration.ZERO)

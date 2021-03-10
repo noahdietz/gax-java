@@ -62,6 +62,7 @@ import org.threeten.bp.Instant;
 public final class HttpJsonCallContext implements ApiCallContext {
   private final HttpJsonChannel channel;
   private final Duration timeout;
+  private final Duration overallTimeout;
   private final Instant deadline;
   private final Credentials credentials;
   private final ImmutableMap<String, List<String>> extraHeaders;
@@ -72,7 +73,7 @@ public final class HttpJsonCallContext implements ApiCallContext {
   /** Returns an empty instance. */
   public static HttpJsonCallContext createDefault() {
     return new HttpJsonCallContext(
-        null, null, null, null, ImmutableMap.<String, List<String>>of(), null, null, null);
+        null, null, null, null, ImmutableMap.<String, List<String>>of(), null, null, null, null);
   }
 
   private HttpJsonCallContext(
@@ -83,7 +84,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
       ImmutableMap<String, List<String>> extraHeaders,
       ApiTracer tracer,
       RetrySettings defaultRetrySettings,
-      Set<StatusCode.Code> defaultRetryableCodes) {
+      Set<StatusCode.Code> defaultRetryableCodes,
+      Duration overallTimeout) {
     this.channel = channel;
     this.timeout = timeout;
     this.deadline = deadline;
@@ -93,6 +95,7 @@ public final class HttpJsonCallContext implements ApiCallContext {
     this.retrySettings = defaultRetrySettings;
     this.retryableCodes =
         defaultRetryableCodes == null ? null : ImmutableSet.copyOf(defaultRetryableCodes);
+    this.overallTimeout = overallTimeout;
   }
 
   /**
@@ -167,6 +170,11 @@ public final class HttpJsonCallContext implements ApiCallContext {
       newRetryableCodes = this.retryableCodes;
     }
 
+    Duration newOverallTimeout = httpJsonCallContext.overallTimeout;
+    if (newOverallTimeout == null) {
+      newOverallTimeout = this.overallTimeout;
+    }
+
     return new HttpJsonCallContext(
         newChannel,
         newTimeout,
@@ -175,7 +183,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
         newExtraHeaders,
         newTracer,
         newRetrySettings,
-        newRetryableCodes);
+        newRetryableCodes,
+        newOverallTimeout);
   }
 
   @Override
@@ -188,7 +197,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Override
@@ -222,13 +232,39 @@ public final class HttpJsonCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Nullable
   @Override
   public Duration getTimeout() {
     return timeout;
+  }
+
+  @Override
+  public HttpJsonCallContext withOverallTimeout(Duration overallTimeout) {
+    // Default RetrySettings use 0 for RPC timeout. Treat that as disabled timeouts.
+    if (overallTimeout != null && (overallTimeout.isZero() || overallTimeout.isNegative())) {
+      overallTimeout = null;
+    }
+
+    return new HttpJsonCallContext(
+        this.channel,
+        this.timeout,
+        this.deadline,
+        this.credentials,
+        this.extraHeaders,
+        this.tracer,
+        this.retrySettings,
+        this.retryableCodes,
+        overallTimeout);
+  }
+
+  @Nullable
+  @Override
+  public Duration getOverallTimeout() {
+    return overallTimeout;
   }
 
   @Override
@@ -267,7 +303,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
         newExtraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @BetaApi("The surface for extra headers is not stable yet and may change in the future.")
@@ -303,7 +340,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Override
@@ -321,7 +359,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        retryableCodes);
+        retryableCodes,
+        this.overallTimeout);
   }
 
   public HttpJsonCallContext withChannel(HttpJsonChannel newChannel) {
@@ -333,7 +372,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   public HttpJsonCallContext withDeadline(Instant newDeadline) {
@@ -345,7 +385,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
         this.extraHeaders,
         this.tracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Nonnull
@@ -370,7 +411,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
         this.extraHeaders,
         newTracer,
         this.retrySettings,
-        this.retryableCodes);
+        this.retryableCodes,
+        this.overallTimeout);
   }
 
   @Override
@@ -389,7 +431,8 @@ public final class HttpJsonCallContext implements ApiCallContext {
         && Objects.equals(this.extraHeaders, that.extraHeaders)
         && Objects.equals(this.tracer, that.tracer)
         && Objects.equals(this.retrySettings, that.retrySettings)
-        && Objects.equals(this.retryableCodes, that.retryableCodes);
+        && Objects.equals(this.retryableCodes, that.retryableCodes)
+        && Objects.equals(this.overallTimeout, that.overallTimeout);
   }
 
   @Override
@@ -402,6 +445,7 @@ public final class HttpJsonCallContext implements ApiCallContext {
         extraHeaders,
         tracer,
         retrySettings,
-        retryableCodes);
+        retryableCodes,
+        overallTimeout);
   }
 }
